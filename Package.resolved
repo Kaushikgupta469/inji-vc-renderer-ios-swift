@@ -21,7 +21,7 @@
     {
       "identity" : "pixelpass-ios-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mosip/pixelpass-ios-swift.git",
+      "location" : "https://github.com/inji/pixelpass-ios-swift.git",
       "state" : {
         "revision" : "0f6223ef65012260d93ec4a2273ca9f14be2a2a5",
         "version" : "1.0.0-alpha.1"

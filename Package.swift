@@ -13,7 +13,7 @@ let package = Package(
             targets: ["InjiVcRenderer"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/mosip/pixelpass-ios-swift.git", exact: "1.0.0-alpha.1"),
+        .package(url: "https://github.com/inji/pixelpass-ios-swift.git", exact: "1.0.0-alpha.1"),
         .package(url: "https://github.com/tadija/AEXML.git", from: "4.6.0")
 
     ],

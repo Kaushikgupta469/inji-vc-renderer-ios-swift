@@ -47,6 +47,7 @@ To include InjiVcRenderer in your Swift project:
     Result will be => [<svg>Male##John</svg>]
 ```
 - Returns the Replaced svg template to render proper SVG Image. It returns the list of SVG Template if multiple render methods are present in the VC.
+- An `<image>` href that is not an `http(s)` URL or a well-formed `data:image` URI (e.g. `-` for a missing value) is replaced with an embedded "No Image Available" placeholder.
 
 ## Package Structure
 
@@ -67,6 +68,7 @@ Sources
 │   │   ├── QRCodeGenerator.swift  # QR code generation utility
 │── templateEngine/svg/        # Json Pointer Algorithm implementation
     |--JsonPointerResolver.swift    
+    |--NoImagePlaceholder.swift  # Fallback portrait for missing or invalid image hrefs
 ├── utils      # Utility classes    
 │   ├── TemplateHelper.swift      
 │   └── XMLHelper.swift

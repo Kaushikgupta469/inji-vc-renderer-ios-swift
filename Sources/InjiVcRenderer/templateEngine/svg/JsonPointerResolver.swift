@@ -24,9 +24,18 @@ final class JsonPointerResolver {
         pattern: "%(?![0-9A-Fa-f]{2})"
     )
     private static let httpUrlRegex = try! NSRegularExpression(
-        pattern: #"^https?://[^/?#\s]"#,
+        pattern: #"^https?://(?:[^/?#@\s]*@)?[^/?#@:\s][^/?#@\s]*(?:[/?#]|$)"#,
         options: [.caseInsensitive]
     )
+    private static let imageSignatures: [[UInt8]] = [
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+        [0xFF, 0xD8, 0xFF],
+        Array("GIF87a".utf8),
+        Array("GIF89a".utf8),
+        [0x42, 0x4D],
+        [0x49, 0x49, 0x2A, 0x00],
+        [0x4D, 0x4D, 0x00, 0x2A]
+    ]
     public static let className = String(describing: JsonPointerResolver.self)
     private let qrCodeGenerator: QrCodeGeneratorProtocol = QrCodeGenerator() as QrCodeGeneratorProtocol
 
@@ -263,7 +272,42 @@ final class JsonPointerResolver {
         guard let mediaType = metadata.first, mediaType.hasPrefix("image/") else { return false }
 
         let payload = String(content[content.index(after: commaIndex)...]).filter { !$0.isWhitespace }
-        return metadata.dropFirst().contains("base64") ? isBase64(payload) : isPercentEncoded(payload)
+        let bytes = metadata.dropFirst().contains("base64") ? decodeBase64(payload) : decodePercentEncoded(payload)
+        return bytes.map { isImageContent($0, mediaType: mediaType) } ?? false
+    }
+
+    private static func decodeBase64(_ value: String) -> Data? {
+        return isBase64(value) ? Data(base64Encoded: value) : nil
+    }
+
+    private static func decodePercentEncoded(_ value: String) -> Data? {
+        guard isPercentEncoded(value) else { return nil }
+        let utf8 = Array(value.utf8)
+        var bytes = Data()
+        var index = 0
+        while index < utf8.count {
+            if utf8[index] == UInt8(ascii: "%"), index + 2 < utf8.count,
+               let byte = UInt8(String(decoding: utf8[(index + 1)...(index + 2)], as: UTF8.self), radix: 16) {
+                bytes.append(byte)
+                index += 3
+            } else {
+                bytes.append(utf8[index])
+                index += 1
+            }
+        }
+        return bytes
+    }
+
+    private static func isImageContent(_ bytes: Data, mediaType: String) -> Bool {
+        if mediaType == "image/svg+xml" {
+            return String(decoding: bytes, as: UTF8.self).range(of: "<svg", options: .caseInsensitive) != nil
+        }
+        return imageSignatures.contains { bytes.starts(with: $0) } || isWebP(bytes)
+    }
+
+    private static func isWebP(_ bytes: Data) -> Bool {
+        guard #available(iOS 14, *) else { return false }
+        return bytes.starts(with: Array("RIFF".utf8)) && bytes.dropFirst(8).starts(with: Array("WEBP".utf8))
     }
 
     private static func isPercentEncoded(_ value: String) -> Bool {

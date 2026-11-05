@@ -383,8 +383,74 @@ final class JsonPointerResolverTests: XCTestCase {
         XCTAssertEqual(result, portraitSvg(href: logoUrl))
     }
 
+    func testReplaceSvgPlaceholders_httpUrlWithHostIsKept() throws {
+        let urls = [
+            "https://example.com:8080/logo.png",
+            "https://user:pw@example.com/logo.png",
+            "https://[::1]:8080/logo.png",
+            "HTTP://EXAMPLE.COM/LOGO.PNG"
+        ]
+
+        for url in urls {
+            let result = try renderSvg(portraitTemplate, credentialSubject: ["face": url])
+
+            XCTAssertEqual(result, portraitSvg(href: url), "face: \(url)")
+        }
+    }
+
+    func testReplaceSvgPlaceholders_dataUriWithoutSupportedImageContentUsesPlaceholder() throws {
+        let nonImageFaces = [
+            "data:image/png;base64,aGVsbG8=",
+            "data:image/png,hello",
+            "data:image/jpeg;base64,PHN2Zz48L3N2Zz4=",
+            "data:image/svg+xml;base64,aGVsbG8=",
+            "data:image/svg+xml,hello",
+            "data:image/webp;base64,UklGRhoAAABXQVZFZm10IA=="
+        ]
+
+        for face in nonImageFaces {
+            let result = try renderSvg(portraitTemplate, credentialSubject: ["face": face])
+
+            XCTAssertEqual(result, portraitSvg(href: NoImagePlaceholder.dataUri), "face: \(face)")
+        }
+    }
+
+    func testReplaceSvgPlaceholders_dataUriWithImageContentIsKept() throws {
+        let imageFaces = [
+            "data:image/png;base64,/9j/4AAQSkZJRg==",
+            "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+            "data:image/bmp;base64,Qk0AAAAA",
+            "data:image/tiff;base64,SUkqAA==",
+            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=",
+            "data:image/png,%89PNG%0D%0A%1A%0A"
+        ]
+
+        for face in imageFaces {
+            let result = try renderSvg(portraitTemplate, credentialSubject: ["face": face])
+
+            XCTAssertEqual(result, portraitSvg(href: face), "face: \(face)")
+        }
+    }
+
+    func testReplaceSvgPlaceholders_webpFaceIsKeptWhenSupported() throws {
+        let face = "data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA=="
+        let expectedHref: String
+        if #available(iOS 14, *) {
+            expectedHref = face
+        } else {
+            expectedHref = NoImagePlaceholder.dataUri
+        }
+
+        let result = try renderSvg(portraitTemplate, credentialSubject: ["face": face])
+
+        XCTAssertEqual(result, portraitSvg(href: expectedHref))
+    }
+
     func testReplaceSvgPlaceholders_httpUrlWithoutHostUsesPlaceholder() throws {
-        let hostlessUrls = ["https://", "http://", "HTTPS://", "https:///logo.png", "https://?size=1", "https://#photo"]
+        let hostlessUrls = [
+            "https://", "http://", "HTTPS://", "https:///logo.png", "https://?size=1", "https://#photo",
+            "https://user@", "https://:443", "https://user@:443/logo.png"
+        ]
 
         for url in hostlessUrls {
             let result = try renderSvg(portraitTemplate, credentialSubject: ["face": url])
